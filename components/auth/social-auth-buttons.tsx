@@ -6,6 +6,28 @@ import { useState } from "react";
 import { Provider } from "@supabase/supabase-js";
 import { socialAuthProviders } from "@/config";
 
+import type { IconType } from "react-icons";
+import {
+  FaGoogle,
+  FaGithub,
+  FaDiscord,
+  FaApple,
+  FaBitbucket,
+  FaFacebook,
+  FaFigma,
+  FaGitlab,
+  FaLinkedin,
+  FaSlack,
+  FaSpotify,
+  FaTwitch,
+  FaTwitter,
+  FaMicrosoft,
+} from "react-icons/fa6";
+import { RiKakaoTalkFill, RiNotionFill } from "react-icons/ri";
+import { SiKeycloak, SiZoom } from "react-icons/si";
+import { TbAirBalloon } from "react-icons/tb";
+import { BsChevronExpand } from "react-icons/bs";
+
 type LoadingState = "idle" | Provider;
 
 interface SocialAuthButtonsProps {
@@ -48,22 +70,78 @@ export function SocialAuthButtons({
     }
   };
 
+  // Map the provider to the lucide icon name
+  const providerToIcon = new Map<Provider, IconType>([
+    ["apple", FaApple],
+    ["azure", FaMicrosoft],
+    ["bitbucket", FaBitbucket],
+    ["discord", FaDiscord],
+    ["facebook", FaFacebook],
+    ["figma", FaFigma],
+    ["github", FaGithub],
+    ["gitlab", FaGitlab],
+    ["google", FaGoogle],
+    ["kakao", RiKakaoTalkFill],
+    ["keycloak", SiKeycloak],
+    ["linkedin", FaLinkedin],
+    ["linkedin_oidc", FaLinkedin],
+    ["notion", RiNotionFill],
+    ["slack", FaSlack],
+    ["slack_oidc", FaSlack],
+    ["spotify", FaSpotify],
+    ["twitch", FaTwitch],
+    ["twitter", FaTwitter],
+    ["workos", BsChevronExpand],
+    ["zoom", SiZoom],
+    ["fly", TbAirBalloon],
+  ]);
+
+  const providerDisplayNames: Record<Provider, string> = {
+    apple: "Apple",
+    azure: "Azure",
+    bitbucket: "Bitbucket",
+    discord: "Discord",
+    facebook: "Facebook",
+    figma: "Figma",
+    github: "GitHub",
+    gitlab: "GitLab",
+    google: "Google",
+    kakao: "Kakao",
+    keycloak: "Keycloak",
+    linkedin: "LinkedIn",
+    linkedin_oidc: "LinkedIn",
+    notion: "Notion",
+    slack: "Slack",
+    slack_oidc: "Slack",
+    spotify: "Spotify",
+    twitch: "Twitch",
+    twitter: "Twitter",
+    workos: "WorkOS",
+    zoom: "Zoom",
+    fly: "Fly",
+  };
+
   const isLoading = loadingState !== "idle";
 
-  const buttons = socialAuthProviders.map((provider) => (
-    <Button
-      key={provider}
-      type="button"
-      variant="outline"
-      className="w-full"
-      disabled={disabled || isLoading}
-      onClick={() => handleSocialLogin(provider)}
-    >
-      {loadingState === provider
-        ? `Connecting to ${provider}...`
-        : `Continue with ${provider}`}
-    </Button>
-  ));
+  const buttons = socialAuthProviders.map((provider) => {
+    const IconComponent = providerToIcon.get(provider);
+
+    return (
+      <Button
+        key={provider}
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={disabled || isLoading}
+        onClick={() => handleSocialLogin(provider)}
+      >
+        {IconComponent ? <IconComponent className="mr-2 h-4 w-4" /> : null}
+        {loadingState === provider
+          ? `Connecting to ${providerDisplayNames[provider]}...`
+          : `Continue with ${providerDisplayNames[provider]}`}
+      </Button>
+    );
+  });
 
   return (
     <>
