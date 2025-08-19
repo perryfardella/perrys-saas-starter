@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SocialAuthButtons } from "./social-auth-buttons";
 
 export function LoginForm({
   className,
@@ -93,6 +94,11 @@ export function LoginForm({
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
+            <SocialAuthButtons
+              redirectTo="/protected"
+              onError={setError}
+              disabled={isLoading}
+            />
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link
