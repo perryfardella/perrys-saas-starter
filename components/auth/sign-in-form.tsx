@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SocialAuthButtons } from "./social-auth-buttons";
 
-export function LoginForm({
+export function SignInForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
