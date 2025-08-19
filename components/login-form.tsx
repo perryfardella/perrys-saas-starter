@@ -16,6 +16,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+type LoadingState = "idle" | "email-password" | "github" | "google" | "discord";
+
 export function LoginForm({
   className,
   ...props
@@ -23,13 +25,12 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<LoadingState>("idle");
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEmailPasswordLogin = async () => {
     const supabase = createClient();
-    setIsLoading(true);
+    setLoadingState("email-password");
     setError(null);
 
     try {
@@ -38,14 +39,39 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
       router.push("/protected");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
+      setLoadingState("idle");
     }
   };
+
+  const handleSocialLogin = async (provider: string) => {
+    const supabase = createClient();
+    setLoadingState(provider as LoadingState);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider as "github" | "google" | "discord",
+        options: {
+          redirectTo: `${window.location.origin}/auth/oauth?next=/protected`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "An error occurred");
+      setLoadingState("idle");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleEmailPasswordLogin();
+  };
+
+  const isLoading = loadingState !== "idle";
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -57,7 +83,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
@@ -68,6 +94,7 @@ export function LoginForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -86,23 +113,69 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+                {loadingState === "email-password" ? "Logging in..." : "Login"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="underline underline-offset-4"
-              >
-                Sign up
-              </Link>
-            </div>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => handleSocialLogin("github")}
+            >
+              {loadingState === "github"
+                ? "Connecting to GitHub..."
+                : "Continue with GitHub"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => handleSocialLogin("google")}
+            >
+              {loadingState === "google"
+                ? "Connecting to Google..."
+                : "Continue with Google"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => handleSocialLogin("discord")}
+            >
+              {loadingState === "discord"
+                ? "Connecting to Discord..."
+                : "Continue with Discord"}
+            </Button>
+          </div>
+
+          <div className="mt-6 text-center text-sm">
+            Don&apos;t have an account?{" "}
+            <Link href="/auth/sign-up" className="underline underline-offset-4">
+              Sign up
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
