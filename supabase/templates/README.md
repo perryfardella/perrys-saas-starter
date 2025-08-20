@@ -8,9 +8,9 @@ This folder contains professional HTML email templates for all Supabase authenti
 | ----------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
 | `confirmation.html`     | Email verification for new user registrations  | When a user signs up and needs to verify their email         |
 | `invite.html`           | User invitations                               | When an admin invites a user to join the application         |
-| `recovery.html`         | Password reset                                 | When a user requests a password reset                        |
-| `magic_link.html`       | Passwordless authentication                    | When a user requests a magic link for passwordless login     |
-| `email_change.html`     | Email address change verification              | When a user wants to change their email address              |
+| `reset-password.html`   | Password reset                                 | When a user requests a password reset                        |
+| `magic-link.html`       | Passwordless authentication                    | When a user requests a magic link for passwordless login     |
+| `email-change.html`     | Email address change verification              | When a user wants to change their email address              |
 | `reauthentication.html` | Security verification for sensitive operations | When additional verification is needed for sensitive actions |
 
 ## 🚀 Using Templates Locally (Supabase CLI)
@@ -36,15 +36,15 @@ content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
 subject = "Reset Your Password - My App"
-content_path = "./supabase/templates/recovery.html"
+content_path = "./supabase/templates/reset-password.html"
 
 [auth.email.template.magic_link]
 subject = "Your Magic Link - My App"
-content_path = "./supabase/templates/magic_link.html"
+content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.email_change]
 subject = "Confirm Email Change - My App"
-content_path = "./supabase/templates/email_change.html"
+content_path = "./supabase/templates/email-change.html"
 
 [auth.email.template.reauthentication]
 subject = "Security Verification Required - My App"
@@ -109,14 +109,6 @@ To update colors, simply edit the CSS values in each template's `<style>` sectio
 **Why Static Templates?**
 These templates are designed to be copied directly into Supabase Dashboard, so they need to be self-contained HTML with inline styles. This keeps them simple and reliable across all email clients.
 
-### Updating App Information
-
-In `config.ts`, you can also update:
-
-- `appName` - Your application name
-- `companyName` - Your company name
-- `supportEmail` - Support email prefix
-
 ### Template Structure
 
 Each template follows this structure:
@@ -135,14 +127,6 @@ All templates are designed to be mobile-responsive and will look great on:
 - Webmail (Gmail, Yahoo, Outlook.com)
 - Mobile devices (iOS Mail, Android Gmail, etc.)
 
-## 🔧 Testing
-
-To test your email templates:
-
-1. Set up a local SMTP server or use a service like [Mailhog](https://github.com/mailhog/MailHog)
-2. Configure your Supabase project to use the test SMTP settings
-3. Trigger each authentication flow to see the emails
-
 ## 🆘 Support
 
 If you need help customizing these templates:
@@ -155,5 +139,4 @@ If you need help customizing these templates:
 
 - Templates include fallback fonts for better compatibility
 - Inline styles are used for maximum email client support
-- All templates include both link and OTP code options where applicable
 - Security messaging is included for sensitive operations
