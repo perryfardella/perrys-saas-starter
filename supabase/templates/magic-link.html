@@ -1,15 +1,15 @@
 <!-- 
-    Default subject: "Reset Your Password"
-    When sent: When a user requests a password reset
-    Purpose: Password recovery flow for users who forgot their password
-    Content: Contains a link to reset the user's password 
+    Default subject: "Your Magic Link"
+    When sent: When a user requests a magic link for passwordless authentication
+    Purpose: Passwordless login using email links
+    Content: Contains a secure link that automatically logs the user in when clicked 
 -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reset Your Password</title>
+    <title>Your Magic Link</title>
     <style>
       /* Email client reset */
       body,
@@ -118,11 +118,9 @@
         display: inline-block;
       }
 
-      .security-notice {
-        background-color: #f8f9fa;
-        border-left: 4px solid #333333;
-        padding: 16px;
-        margin: 20px 0;
+      .magic-icon {
+        font-size: 32px;
+        margin-bottom: 16px;
       }
     </style>
   </head>
@@ -134,39 +132,33 @@
       </div>
 
       <div class="email-body">
-        <h1>Reset your password</h1>
+        <div style="text-align: center">
+          <div class="magic-icon">✨</div>
+        </div>
+
+        <h1>Your magic link is ready!</h1>
 
         <p>
-          We received a request to reset the password for your My App account
-          associated with {{ .Email }}.
+          Click the button below to securely sign in to your My App account. No
+          password required!
         </p>
 
         <div style="text-align: center">
-          <a href="{{ .ConfirmationURL }}" class="button">Reset Password</a>
+          <a href="{{ .ConfirmationURL }}" class="button"
+            >Sign In with Magic Link</a
+          >
         </div>
 
         <p class="muted">
-          Or use this 6-digit code: <strong>{{ .Token }}</strong>
-        </p>
-
-        <div class="security-notice">
-          <p class="muted" style="margin: 0">
-            <strong>Security Note:</strong> If you didn't request this password
-            reset, please ignore this email. Your password will remain
-            unchanged.
-          </p>
-        </div>
-
-        <p class="muted">
-          This password reset link will expire in 1 hour for security reasons.
+          This magic link will expire in 1 hour for security reasons. If you
+          didn't request this link, you can safely ignore this email.
         </p>
       </div>
 
       <div class="email-footer">
         <p class="muted">
-          This email was sent to {{ .Email }}.<br />
-          If you have questions, contact us at support@{{ .SiteURL | replace
-          "https://" "" | replace "http://" "" }}
+          This magic link was sent to {{ .Email }}.<br />
+          If you have questions, contact us at support@{{ .SiteURL }}
         </p>
       </div>
     </div>

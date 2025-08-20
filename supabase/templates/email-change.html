@@ -155,10 +155,6 @@
         </div>
 
         <p class="muted">
-          Or use this 6-digit code: <strong>{{ .Token }}</strong>
-        </p>
-
-        <p class="muted">
           If you didn't request this email change, please contact our support
           team immediately to secure your account.
         </p>
@@ -167,8 +163,7 @@
       <div class="email-footer">
         <p class="muted">
           This confirmation was sent to {{ .NewEmail }}.<br />
-          If you have questions, contact us at support@{{ .SiteURL | replace
-          "https://" "" | replace "http://" "" }}
+          If you have questions, contact us at support@{{ .SiteURL }}
         </p>
       </div>
     </div>

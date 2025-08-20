@@ -141,10 +141,6 @@
         </div>
 
         <p class="muted">
-          Or use this 6-digit code: <strong>{{ .Token }}</strong>
-        </p>
-
-        <p class="muted">
           If you didn't create an account with us, you can safely ignore this
           email.
         </p>
@@ -153,8 +149,7 @@
       <div class="email-footer">
         <p class="muted">
           This email was sent to {{ .Email }}.<br />
-          If you have questions, contact us at support@{{ .SiteURL | replace
-          "https://" "" | replace "http://" "" }}
+          If you have questions, contact us at support@{{ .SiteURL }}
         </p>
       </div>
     </div>
