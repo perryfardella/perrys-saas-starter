@@ -37,7 +37,7 @@ interface SocialAuthButtonsProps {
 }
 
 export function SocialAuthButtons({
-  redirectTo = "/protected",
+  redirectTo = "/dashboard",
   onError,
   disabled = false,
 }: SocialAuthButtonsProps) {

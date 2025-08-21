@@ -40,7 +40,7 @@ export function SignInForm({
         password,
       });
       if (error) throw error;
-      router.push("/protected");
+      router.push("/dashboard");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -100,13 +100,13 @@ export function SignInForm({
 
             <MagicLinkButton
               email={email}
-              redirectTo="/protected"
+              redirectTo="/dashboard"
               onError={setError}
               disabled={isLoading}
             />
 
             <SocialAuthButtons
-              redirectTo="/protected"
+              redirectTo="/dashboard"
               onError={setError}
               disabled={isLoading}
             />

@@ -14,7 +14,7 @@ interface MagicLinkButtonProps {
 
 export function MagicLinkButton({
   email,
-  redirectTo = "/protected",
+  redirectTo = "/dashboard",
   onError,
   disabled = false,
 }: MagicLinkButtonProps) {

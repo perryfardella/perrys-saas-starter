@@ -46,7 +46,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;
@@ -117,13 +117,13 @@ export function SignUpForm({
 
             <MagicLinkButton
               email={email}
-              redirectTo="/protected"
+              redirectTo="/dashboard"
               onError={setError}
               disabled={isLoading}
             />
 
             <SocialAuthButtons
-              redirectTo="/protected"
+              redirectTo="/dashboard"
               onError={setError}
               disabled={isLoading}
             />
