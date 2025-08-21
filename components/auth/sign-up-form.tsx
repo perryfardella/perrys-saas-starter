@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SocialAuthButtons } from "./social-auth-buttons";
-import { enableMagicLinks } from "@/config";
+import { MagicLinkButton } from "./magic-link-button";
 
 export function SignUpForm({
   className,
@@ -27,8 +27,6 @@ export function SignUpForm({
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [useMagicLink, setUseMagicLink] = useState(false);
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -60,78 +58,17 @@ export function SignUpForm({
     }
   };
 
-  const handleMagicLinkSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const supabase = createClient();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/protected`,
-        },
-      });
-      if (error) throw error;
-      setMagicLinkSent(true);
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (enableMagicLinks && magicLinkSent) {
-    return (
-      <div className={cn("flex flex-col gap-6", className)} {...props}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Magic link sent successfully</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-4">
-                We&apos;ve sent a magic link to <strong>{email}</strong>. Click
-                the link in your email to create your account and sign in.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMagicLinkSent(false);
-                  setUseMagicLink(false);
-                  setEmail("");
-                }}
-              >
-                Try again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Sign up</CardTitle>
           <CardDescription>
-            {enableMagicLinks && useMagicLink
-              ? "Enter your email to receive a magic link"
-              : "Create a new account"}
+            Create a new account with your email and password
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={
-              enableMagicLinks && useMagicLink
-                ? handleMagicLinkSignUp
-                : handleSignUp
-            }
-          >
+          <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
@@ -145,67 +82,45 @@ export function SignUpForm({
                 />
               </div>
 
-              {!(enableMagicLinks && useMagicLink) && (
-                <>
-                  <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="password">Password</Label>
-                    </div>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="repeat-password">Repeat Password</Label>
-                    </div>
-                    <Input
-                      id="repeat-password"
-                      type="password"
-                      required
-                      value={repeatPassword}
-                      onChange={(e) => setRepeatPassword(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
+              <div className="grid gap-2">
+                <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex items-center">
+                  <Label htmlFor="repeat-password">Repeat Password</Label>
+                </div>
+                <Input
+                  id="repeat-password"
+                  type="password"
+                  required
+                  value={repeatPassword}
+                  onChange={(e) => setRepeatPassword(e.target.value)}
+                />
+              </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading
-                  ? enableMagicLinks && useMagicLink
-                    ? "Sending magic link..."
-                    : "Creating account..."
-                  : enableMagicLinks && useMagicLink
-                  ? "Send magic link"
-                  : "Sign up"}
+                {isLoading ? "Creating account..." : "Sign up"}
               </Button>
-
-              {enableMagicLinks && (
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseMagicLink(!useMagicLink);
-                      setError(null);
-                      setPassword("");
-                      setRepeatPassword("");
-                    }}
-                    className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-                    disabled={isLoading}
-                  >
-                    {useMagicLink
-                      ? "Use password instead"
-                      : "Use magic link instead"}
-                  </button>
-                </div>
-              )}
             </div>
+
+            <MagicLinkButton
+              email={email}
+              redirectTo="/protected"
+              onError={setError}
+              disabled={isLoading}
+            />
 
             <SocialAuthButtons
               redirectTo="/protected"
