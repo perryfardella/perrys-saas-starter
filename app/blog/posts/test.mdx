@@ -1,0 +1,28 @@
+import { BlogLayout } from "@/components/blog/blog-layout";
+import { getPostBySlug } from "@/app/blog/blog-data";
+
+export const post = getPostBySlug("test");
+
+# Welcome to my MDX blog page!
+
+This is some **bold** and _italics_ text.
+
+This is a list in markdown:
+
+- One
+- Two
+- Three
+
+## Code Examples
+
+Here's some code:
+
+```javascript
+function hello() {
+  console.log("Hello, world!");
+}
+```
+
+## More Content
+
+This demonstrates how MDX can seamlessly blend Markdown content with React components for a powerful blogging experience.

@@ -1,0 +1,136 @@
+# Installation
+
+Welcome to the installation guide! This guide will walk you through setting up your SaaS starter project locally.
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your system:
+
+- **Node.js** (version 18.0 or higher)
+- **pnpm** (recommended) or npm
+- **Git**
+- **Supabase CLI** (optional, for local development)
+
+## Quick Setup
+
+Follow these steps to get your project up and running:
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/perrys-saas-starter.git
+cd perrys-saas-starter
+```
+
+### 2. Install Dependencies
+
+Using pnpm (recommended):
+
+```bash
+pnpm install
+```
+
+Or using npm:
+
+```bash
+npm install
+```
+
+### 3. Environment Setup
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+### 4. Configure Environment Variables
+
+Open `.env.local` and update the following variables:
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Next.js Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_nextauth_secret
+```
+
+> **Note:** You can get your Supabase credentials from your [Supabase dashboard](https://supabase.com/dashboard).
+
+### 5. Start the Development Server
+
+```bash
+pnpm dev
+```
+
+Your application should now be running at `http://localhost:3000`!
+
+## Project Structure
+
+Here's an overview of the project structure:
+
+```
+perrys-saas-starter/
+├── app/                    # Next.js App Router
+│   ├── auth/              # Authentication pages
+│   ├── blog/              # Blog functionality
+│   ├── dashboard/         # User dashboard
+│   └── docs/              # Documentation
+├── components/            # Reusable React components
+├── lib/                   # Utility libraries
+├── supabase/             # Database migrations and config
+└── public/               # Static assets
+```
+
+## What's Included
+
+This starter includes:
+
+- ✅ **Next.js 14** with App Router
+- ✅ **Supabase** for authentication and database
+- ✅ **Tailwind CSS** for styling
+- ✅ **TypeScript** for type safety
+- ✅ **MDX** for content management
+- ✅ **ESLint** and **Prettier** for code quality
+
+## Next Steps
+
+Now that you have the project running locally, here are some recommended next steps:
+
+1. [Configure your environment](/docs/configuration) - Set up your database and authentication
+2. [Take your first steps](/docs/first-steps) - Learn about the key features
+3. [Set up authentication](/docs/auth-overview) - Configure user registration and login
+
+## Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+
+```bash
+# Kill the process using port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Or use a different port
+pnpm dev -- --port 3001
+```
+
+**Module not found errors:**
+
+```bash
+# Clear npm/pnpm cache and reinstall
+rm -rf node_modules package-lock.json pnpm-lock.yaml
+pnpm install
+```
+
+**Supabase connection issues:**
+
+- Verify your environment variables are correct
+- Check that your Supabase project is active
+- Ensure your database is properly set up
+
+Need more help? Check out our [troubleshooting guide](/docs/troubleshooting) or reach out to the community!

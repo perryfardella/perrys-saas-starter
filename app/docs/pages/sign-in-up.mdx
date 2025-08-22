@@ -1,0 +1,491 @@
+# Sign In & Sign Up
+
+Learn how to customize the authentication forms and create seamless user experiences.
+
+## Authentication Forms
+
+Your starter includes pre-built, customizable authentication forms:
+
+- **Sign Up Form**: `/app/auth/sign-up/page.tsx`
+- **Sign In Form**: `/app/auth/sign-in/page.tsx`
+- **Forgot Password**: `/app/auth/forgot-password/page.tsx`
+- **Update Password**: `/app/auth/update-password/page.tsx`
+
+## Form Components
+
+### Sign Up Component
+
+Located at `components/auth/sign-up-form.tsx`:
+
+```typescript
+"use client";
+
+import { useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
+
+export function SignUpForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${location.origin}/auth/confirm`,
+      },
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      router.push("/auth/sign-up-success");
+    }
+    setLoading(false);
+  };
+
+  return <form onSubmit={handleSignUp}>{/* Form fields */}</form>;
+}
+```
+
+### Sign In Component
+
+Located at `components/auth/sign-in-form.tsx`:
+
+```typescript
+export function SignInForm() {
+  // Similar structure to SignUpForm
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      router.push("/dashboard");
+    }
+    setLoading(false);
+  };
+
+  // Return form JSX
+}
+```
+
+## Customizing Forms
+
+### 1. Styling
+
+Update the form styling by modifying the Tailwind classes:
+
+```typescript
+// Example: Custom button styling
+<button
+  type="submit"
+  disabled={loading}
+  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 
+             text-white font-semibold py-3 px-4 rounded-lg 
+             hover:from-blue-600 hover:to-purple-700 
+             disabled:opacity-50 transition-all duration-200"
+>
+  {loading ? "Creating Account..." : "Sign Up"}
+</button>
+```
+
+### 2. Additional Fields
+
+Add custom fields to collect more user information:
+
+```typescript
+const [fullName, setFullName] = useState("");
+const [company, setCompany] = useState("");
+
+const handleSignUp = async (e: React.FormEvent) => {
+  // ... existing code
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${location.origin}/auth/confirm`,
+      data: {
+        full_name: fullName,
+        company: company,
+      },
+    },
+  });
+
+  // ... rest of function
+};
+```
+
+### 3. Validation
+
+Add form validation:
+
+```typescript
+import { z } from "zod";
+
+const signUpSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+// In your component
+const [errors, setErrors] = useState<Record<string, string>>({});
+
+const handleSignUp = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    const validatedData = signUpSchema.parse({
+      email,
+      password,
+      confirmPassword,
+    });
+
+    setErrors({});
+    // Continue with sign up...
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const fieldErrors: Record<string, string> = {};
+      error.errors.forEach((err) => {
+        fieldErrors[err.path[0]] = err.message;
+      });
+      setErrors(fieldErrors);
+    }
+  }
+};
+```
+
+## Social Authentication
+
+### Adding OAuth Providers
+
+The starter includes social auth buttons in `components/auth/social-auth-buttons.tsx`:
+
+```typescript
+export function SocialAuthButtons() {
+  const supabase = createClientComponentClient();
+
+  const handleOAuthSignIn = async (provider: "google" | "github") => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("OAuth error:", error.message);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => handleOAuthSignIn("google")}
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 
+                   border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      >
+        <GoogleIcon />
+        Continue with Google
+      </button>
+
+      <button
+        onClick={() => handleOAuthSignIn("github")}
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 
+                   border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      >
+        <GitHubIcon />
+        Continue with GitHub
+      </button>
+    </div>
+  );
+}
+```
+
+### OAuth Configuration
+
+1. **Google OAuth Setup**:
+
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create OAuth 2.0 credentials
+   - Add authorized redirect URIs
+
+2. **GitHub OAuth Setup**:
+
+   - Go to GitHub Settings > Developer settings
+   - Create new OAuth App
+   - Set authorization callback URL
+
+3. **Supabase Configuration**:
+   - Add provider credentials in Supabase dashboard
+   - Configure redirect URLs
+
+## Magic Links
+
+### Email-Only Authentication
+
+Implement passwordless authentication:
+
+```typescript
+export function MagicLinkForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const supabase = createClientComponentClient();
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${location.origin}/auth/confirm`,
+      },
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setSent(true);
+    }
+    setLoading(false);
+  };
+
+  if (sent) {
+    return (
+      <div className="text-center">
+        <h2>Check your email</h2>
+        <p>We've sent you a magic link to sign in.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleMagicLink}>
+      <input
+        type="email"
+        placeholder="Your email address"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
+      <button type="submit" disabled={loading}>
+        {loading ? "Sending..." : "Send Magic Link"}
+      </button>
+    </form>
+  );
+}
+```
+
+## Password Reset Flow
+
+### Forgot Password Form
+
+```typescript
+export function ForgotPasswordForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const supabase = createClientComponentClient();
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/auth/update-password`,
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setSent(true);
+    }
+    setLoading(false);
+  };
+
+  // Return form JSX
+}
+```
+
+### Update Password Form
+
+```typescript
+export function UpdatePasswordForm() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      alert("Passwords don't match");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      router.push("/dashboard");
+    }
+    setLoading(false);
+  };
+
+  // Return form JSX
+}
+```
+
+## Error Handling
+
+### Custom Error Messages
+
+Create user-friendly error messages:
+
+```typescript
+const getErrorMessage = (error: any) => {
+  switch (error.message) {
+    case "Invalid login credentials":
+      return "Incorrect email or password. Please try again.";
+    case "Email not confirmed":
+      return "Please check your email and click the confirmation link.";
+    case "User already registered":
+      return "An account with this email already exists.";
+    default:
+      return error.message || "An unexpected error occurred.";
+  }
+};
+```
+
+### Loading States
+
+Show appropriate loading states:
+
+```typescript
+<button
+  type="submit"
+  disabled={loading}
+  className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg 
+             disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {loading ? (
+    <div className="flex items-center justify-center gap-2">
+      <Spinner className="w-4 h-4" />
+      Creating account...
+    </div>
+  ) : (
+    "Create Account"
+  )}
+</button>
+```
+
+## Redirects & Navigation
+
+### Post-Authentication Redirects
+
+Handle redirects after successful authentication:
+
+```typescript
+// In your sign-in component
+const handleSignIn = async (e: React.FormEvent) => {
+  // ... sign in logic
+
+  if (!error) {
+    // Redirect based on user role or previous page
+    const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+    router.push(redirectTo);
+  }
+};
+```
+
+### Protected Route Redirects
+
+When users try to access protected content:
+
+```typescript
+// In middleware or protected components
+if (!session) {
+  const currentPath = req.nextUrl.pathname;
+  return NextResponse.redirect(
+    new URL(`/auth/sign-in?redirectTo=${currentPath}`, req.url)
+  );
+}
+```
+
+## Testing Authentication
+
+### Manual Testing Checklist
+
+- [ ] Sign up with new email
+- [ ] Verify email confirmation works
+- [ ] Sign in with correct credentials
+- [ ] Test incorrect password
+- [ ] Test password reset flow
+- [ ] Test OAuth providers
+- [ ] Test magic link flow
+- [ ] Verify protected routes work
+- [ ] Test sign out functionality
+
+### Automated Testing
+
+Example test for sign-up form:
+
+```typescript
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { SignUpForm } from "@/components/auth/sign-up-form";
+
+describe("SignUpForm", () => {
+  it("should submit form with valid data", async () => {
+    render(<SignUpForm />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "test@example.com" },
+    });
+
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: "password123" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+## Next Steps
+
+- [Configure social authentication](/docs/social-auth) providers
+- [Set up your database](/docs/database-setup) for user profiles
+- [Learn about API development](/docs/api-overview) for auth-protected endpoints

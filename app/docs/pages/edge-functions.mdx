@@ -1,0 +1,724 @@
+# Edge Functions
+
+Learn how to create and deploy Supabase Edge Functions for serverless backend logic.
+
+## What are Edge Functions?
+
+Supabase Edge Functions are serverless TypeScript functions that run on the edge, close to your users. They're perfect for:
+
+- **Custom API endpoints** beyond what the auto-generated API provides
+- **Complex business logic** that doesn't belong in the database
+- **Third-party integrations** (payments, emails, webhooks)
+- **Data processing** and transformations
+- **Authentication hooks** and custom auth flows
+
+## Creating Edge Functions
+
+### Project Structure
+
+```
+supabase/
+├── functions/
+│   ├── hello-world/
+│   │   └── index.ts
+│   ├── send-email/
+│   │   └── index.ts
+│   └── process-payment/
+│       └── index.ts
+```
+
+### Basic Function
+
+```typescript
+// supabase/functions/hello-world/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+serve(async (req) => {
+  const { name } = await req.json();
+
+  const data = {
+    message: `Hello ${name}!`,
+    timestamp: new Date().toISOString(),
+  };
+
+  return new Response(JSON.stringify(data), {
+    headers: { "Content-Type": "application/json" },
+    status: 200,
+  });
+});
+```
+
+### Function with Database Access
+
+```typescript
+// supabase/functions/get-user-stats/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      }
+    );
+
+    // Get user from JWT
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch user statistics
+    const { data: posts, error: postsError } = await supabaseClient
+      .from("posts")
+      .select("id, created_at")
+      .eq("user_id", user.id);
+
+    if (postsError) {
+      throw postsError;
+    }
+
+    const stats = {
+      userId: user.id,
+      totalPosts: posts?.length || 0,
+      lastPostDate: posts?.[0]?.created_at || null,
+    };
+
+    return new Response(JSON.stringify(stats), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+```
+
+## Authentication in Edge Functions
+
+### JWT Verification
+
+```typescript
+// supabase/functions/_shared/auth.ts
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+export async function getUser(req: Request) {
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    {
+      global: {
+        headers: { Authorization: req.headers.get("Authorization")! },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error || !user) {
+    throw new Error("Unauthorized");
+  }
+
+  return user;
+}
+
+// Usage in function
+import { getUser } from "../_shared/auth.ts";
+
+serve(async (req) => {
+  try {
+    const user = await getUser(req);
+    // Function logic with authenticated user
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+  }
+});
+```
+
+### Admin Functions
+
+```typescript
+// supabase/functions/admin-function/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+serve(async (req) => {
+  // Use service role for admin operations
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
+  // Admin logic that bypasses RLS
+  const { data, error } = await supabaseAdmin.from("admin_table").select("*");
+
+  return new Response(JSON.stringify(data));
+});
+```
+
+## Common Use Cases
+
+### Email Sending
+
+```typescript
+// supabase/functions/send-email/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+
+interface EmailRequest {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}
+
+serve(async (req) => {
+  try {
+    const {
+      to,
+      subject,
+      html,
+      from = "noreply@yourdomain.com",
+    }: EmailRequest = await req.json();
+
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+
+    if (!emailResponse.ok) {
+      const error = await emailResponse.text();
+      throw new Error(`Failed to send email: ${error}`);
+    }
+
+    const result = await emailResponse.json();
+
+    return new Response(JSON.stringify({ success: true, id: result.id }), {
+      status: 200,
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
+  }
+});
+```
+
+### Payment Processing
+
+```typescript
+// supabase/functions/process-payment/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+  apiVersion: "2023-10-16",
+});
+
+serve(async (req) => {
+  try {
+    const { amount, currency = "usd", customerId } = await req.json();
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      customer: customerId,
+      metadata: {
+        source: "edge_function",
+      },
+    });
+
+    return new Response(
+      JSON.stringify({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      }),
+      { status: 200 }
+    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
+  }
+});
+```
+
+### Webhook Handler
+
+```typescript
+// supabase/functions/stripe-webhook/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+  apiVersion: "2023-10-16",
+});
+
+const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+
+serve(async (req) => {
+  const body = await req.text();
+  const signature = req.headers.get("stripe-signature");
+
+  if (!signature || !endpointSecret) {
+    return new Response("Missing signature or secret", { status: 400 });
+  }
+
+  try {
+    // Verify webhook signature
+    const event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      endpointSecret
+    );
+
+    // Initialize Supabase admin client
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Handle different event types
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        const paymentIntent = event.data.object;
+
+        // Update subscription or user status
+        await supabase
+          .from("subscriptions")
+          .update({ status: "active" })
+          .eq("stripe_payment_intent_id", paymentIntent.id);
+
+        break;
+
+      case "customer.subscription.deleted":
+        const subscription = event.data.object;
+
+        // Cancel user subscription
+        await supabase
+          .from("subscriptions")
+          .update({ status: "cancelled" })
+          .eq("stripe_subscription_id", subscription.id);
+
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return new Response(JSON.stringify({ received: true }), { status: 200 });
+  } catch (error) {
+    console.error("Webhook error:", error.message);
+    return new Response(`Webhook error: ${error.message}`, { status: 400 });
+  }
+});
+```
+
+## Data Processing
+
+### CSV Import
+
+```typescript
+// supabase/functions/import-csv/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+serve(async (req) => {
+  try {
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return new Response("No file provided", { status: 400 });
+    }
+
+    // Parse CSV
+    const csvContent = await file.text();
+    const rows = parse(csvContent, { skipFirstRow: true });
+
+    // Initialize Supabase
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Process in batches
+    const batchSize = 100;
+    const results = [];
+
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize);
+
+      const { data, error } = await supabase
+        .from("imported_data")
+        .insert(batch);
+
+      if (error) {
+        console.error("Batch insert error:", error);
+        continue;
+      }
+
+      results.push(...(data || []));
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        imported: results.length,
+        total: rows.length,
+      }),
+      { status: 200 }
+    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
+  }
+});
+```
+
+### Image Processing
+
+```typescript
+// supabase/functions/process-image/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+serve(async (req) => {
+  try {
+    const formData = await req.formData();
+    const file = formData.get("image") as File;
+
+    if (!file) {
+      return new Response("No image provided", { status: 400 });
+    }
+
+    // Read image as array buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Process image (example: basic validation)
+    const isValidImage = file.type.startsWith("image/");
+
+    if (!isValidImage) {
+      return new Response("Invalid image format", { status: 400 });
+    }
+
+    // Upload to Supabase Storage
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const fileName = `processed-${Date.now()}-${file.name}`;
+
+    const { data, error } = await supabase.storage
+      .from("images")
+      .upload(fileName, uint8Array, {
+        contentType: file.type,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        url: data.path,
+        fileName,
+      }),
+      { status: 200 }
+    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
+  }
+});
+```
+
+## Deployment & Management
+
+### Deploy Functions
+
+```bash
+# Deploy all functions
+supabase functions deploy
+
+# Deploy specific function
+supabase functions deploy hello-world
+
+# Deploy with environment variables
+supabase secrets set STRIPE_SECRET_KEY=sk_test_...
+supabase functions deploy process-payment
+```
+
+### Environment Variables
+
+```bash
+# Set secrets
+supabase secrets set API_KEY=your_api_key
+supabase secrets set DATABASE_URL=your_db_url
+
+# List secrets
+supabase secrets list
+
+# Unset secret
+supabase secrets unset API_KEY
+```
+
+### Function Configuration
+
+```typescript
+// supabase/functions/my-function/index.ts
+
+// Import map for dependencies
+{
+  "imports": {
+    "supabase": "https://esm.sh/@supabase/supabase-js@2",
+    "stripe": "https://esm.sh/stripe@14.21.0"
+  }
+}
+```
+
+## Testing Edge Functions
+
+### Local Testing
+
+```bash
+# Start local development
+supabase start
+
+# Serve functions locally
+supabase functions serve
+
+# Test with curl
+curl -X POST 'http://localhost:54321/functions/v1/hello-world' \
+  -H 'Authorization: Bearer YOUR_ANON_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"World"}'
+```
+
+### Unit Testing
+
+```typescript
+// test/hello-world.test.ts
+import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+
+Deno.test("hello world function", async () => {
+  const req = new Request("http://localhost/", {
+    method: "POST",
+    body: JSON.stringify({ name: "Test" }),
+  });
+
+  // Import and test your function
+  const { serve } = await import("../supabase/functions/hello-world/index.ts");
+
+  // Test logic here
+});
+```
+
+## Performance & Best Practices
+
+### Cold Start Optimization
+
+```typescript
+// Minimize imports and initialization
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+// Reuse connections
+let supabaseClient: any;
+
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+  }
+  return supabaseClient;
+}
+```
+
+### Error Handling
+
+```typescript
+// Standard error response format
+function errorResponse(message: string, status: number = 500) {
+  return new Response(
+    JSON.stringify({
+      error: message,
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+}
+
+// Usage
+serve(async (req) => {
+  try {
+    // Function logic
+  } catch (error) {
+    console.error("Function error:", error);
+    return errorResponse(error.message);
+  }
+});
+```
+
+### Logging
+
+```typescript
+// Structured logging
+function log(level: string, message: string, data?: any) {
+  console.log(
+    JSON.stringify({
+      level,
+      message,
+      data,
+      timestamp: new Date().toISOString(),
+      function: "my-function",
+    })
+  );
+}
+
+// Usage
+log("info", "Processing request", { userId: user.id });
+log("error", "Database error", { error: error.message });
+```
+
+## Calling from Client
+
+### From Next.js App
+
+```typescript
+// lib/edge-functions.ts
+export async function callEdgeFunction(
+  functionName: string,
+  payload?: any,
+  options?: RequestInit
+) {
+  const supabase = createClientComponentClient();
+
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body: payload,
+    ...options,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+// Usage in component
+async function handleProcess() {
+  try {
+    const result = await callEdgeFunction("process-data", {
+      input: "some data",
+    });
+    console.log("Result:", result);
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+```
+
+### With Authentication
+
+```typescript
+// Authenticated function call
+const { data, error } = await supabase.functions.invoke("user-stats", {
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+  },
+});
+```
+
+## Monitoring & Debugging
+
+### Function Logs
+
+```bash
+# View function logs
+supabase functions logs hello-world
+
+# Follow logs in real-time
+supabase functions logs hello-world --follow
+```
+
+### Performance Monitoring
+
+```typescript
+// Add performance metrics
+serve(async (req) => {
+  const startTime = Date.now();
+
+  try {
+    // Function logic
+    const result = await processRequest();
+
+    const duration = Date.now() - startTime;
+    console.log(`Function completed in ${duration}ms`);
+
+    return new Response(JSON.stringify(result));
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`Function failed after ${duration}ms:`, error);
+    throw error;
+  }
+});
+```
+
+## Next Steps
+
+- [Learn about API development](/docs/api-overview) with Edge Functions
+- [Set up deployment](/docs/vercel-deployment) with function deployment
+- [Explore monitoring](/docs/monitoring) for function performance
