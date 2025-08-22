@@ -1,33 +1,12 @@
-import { appName } from "@/config";
+import { appName, socialLinks } from "@/config/config";
 import Link from "next/link";
-import { FaTwitter, FaGithub, FaLinkedin } from "react-icons/fa";
 
 // Footer configuration data
 const footerData = {
   company: {
     name: appName,
     description:
-      "Launch your next SaaS in record time with our React SaaS Boilerplate for Next.js and Supabase.",
-    socialLinks: [
-      {
-        name: "Twitter",
-        href: "#",
-        icon: FaTwitter,
-        ariaLabel: "Twitter",
-      },
-      {
-        name: "GitHub",
-        href: "#",
-        icon: FaGithub,
-        ariaLabel: "GitHub",
-      },
-      {
-        name: "LinkedIn",
-        href: "#",
-        icon: FaLinkedin,
-        ariaLabel: "LinkedIn",
-      },
-    ],
+      "Stop paying stupid amounts of money for other people's AI slop. Get your SaaS off the ground fast with my React SaaS Boilerplate for Next.js and Supabase.",
   },
   sections: [
     {
@@ -83,21 +62,23 @@ export const Footer = () => {
             <p className="text-sm text-muted-foreground">
               {footerData.company.description}
             </p>
-            <div className="flex space-x-4">
-              {footerData.company.socialLinks.map((social) => {
-                const IconComponent = social.icon;
-                return (
-                  <Link
-                    key={social.name}
-                    href={social.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={social.ariaLabel}
-                  >
-                    <IconComponent className="h-5 w-5" />
-                  </Link>
-                );
-              })}
-            </div>
+            {socialLinks.length > 0 ? (
+              <div className="flex space-x-4">
+                {socialLinks.map((social) => {
+                  const IconComponent = social.icon;
+                  return (
+                    <Link
+                      key={social.name}
+                      href={social.href}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label={social.ariaLabel}
+                    >
+                      <IconComponent className="h-5 w-5" />
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {/* Dynamic Link Sections */}

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Provider } from "@supabase/supabase-js";
-import { socialAuthProviders } from "@/config";
+import { socialAuthProviders } from "@/config/config";
 
 import type { IconType } from "react-icons";
 import {

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { enableMagicLinks } from "@/config";
+import { enableMagicLinks } from "@/config/config";
 
 interface MagicLinkButtonProps {
   email: string;
