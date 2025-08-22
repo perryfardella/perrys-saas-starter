@@ -1,7 +1,7 @@
 import { Provider } from "@supabase/supabase-js";
 
 // Set the name of your app here
-export const appName = "My App";
+export const appName = "Perry's SaaS Starter";
 
 // Enable or disable magic link authentication
 // Set to true to show magic link options in sign-in and sign-up forms
