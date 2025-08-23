@@ -1,0 +1,98 @@
+import { BlogLayout } from "@/components/blog/blog-layout";
+import { getPostBySlug } from "@/app/blog/blog-data";
+
+export const post = getPostBySlug("typescript-tips");
+
+<BlogLayout post={post}>
+
+# TypeScript Best Practices
+
+TypeScript has become an essential tool for modern web development. Here are some best practices to help you write better TypeScript code.
+
+## 1. Use Strict Mode
+
+Always enable strict mode in your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true
+  }
+}
+```
+
+## 2. Leverage Type Inference
+
+Let TypeScript infer types when possible:
+
+```typescript
+// Good - let TypeScript infer
+const user = { name: "John", age: 30 };
+
+// Unnecessary - explicit typing when inference works
+const user: { name: string; age: number } = { name: "John", age: 30 };
+```
+
+## 3. Use Union Types
+
+Union types are powerful for handling multiple possible types:
+
+```typescript
+type Status = "loading" | "success" | "error";
+
+function handleStatus(status: Status) {
+  switch (status) {
+    case "loading":
+      return "Loading...";
+    case "success":
+      return "Success!";
+    case "error":
+      return "Error occurred";
+  }
+}
+```
+
+## 4. Create Custom Type Guards
+
+Type guards help TypeScript understand your code better:
+
+```typescript
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function processValue(value: unknown) {
+  if (isString(value)) {
+    // TypeScript knows value is string here
+    console.log(value.toUpperCase());
+  }
+}
+```
+
+## 5. Use Utility Types
+
+TypeScript provides many useful utility types:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+}
+
+// Pick only certain properties
+type PublicUser = Pick<User, "id" | "name" | "email">;
+
+// Make all properties optional
+type PartialUser = Partial<User>;
+
+// Make all properties required
+type RequiredUser = Required<User>;
+```
+
+These practices will help you write more robust and maintainable TypeScript code!
+
+</BlogLayout>
