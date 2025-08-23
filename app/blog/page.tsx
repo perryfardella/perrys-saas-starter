@@ -1,24 +1,26 @@
-import { blogPosts, getAllTags } from './blog-data';
-import { BlogPost } from './blog-data';
-import Link from 'next/link';
-import { Metadata } from 'next';
+import { blogPosts, getAllTags } from "./blog-data";
+import { BlogPost } from "./blog-data";
+import Link from "next/link";
+import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Blog | Perry\'s SaaS Starter',
-  description: 'Insights, tutorials, and thoughts on web development, SaaS, and technology.',
+  title: "Blog | Perry's SaaS Starter",
+  description:
+    "Insights, tutorials, and thoughts on web development, SaaS, and technology.",
   openGraph: {
-    title: 'Blog | Perry\'s SaaS Starter',
-    description: 'Insights, tutorials, and thoughts on web development, SaaS, and technology.',
-    type: 'website',
+    title: "Blog | Perry's SaaS Starter",
+    description:
+      "Insights, tutorials, and thoughts on web development, SaaS, and technology.",
+    type: "website",
   },
 };
 
 export default function Blog() {
   const tags = getAllTags();
-  const sortedPosts = [...blogPosts].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+  const sortedPosts = [...blogPosts].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-  const featuredPosts = sortedPosts.filter(post => post.featured);
+  const featuredPosts = sortedPosts.filter((post) => post.featured);
   const recentPosts = sortedPosts.slice(0, 6);
 
   return (
@@ -27,7 +29,8 @@ export default function Blog() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Blog</h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Insights, tutorials, and thoughts on web development, SaaS, and technology.
+          Insights, tutorials, and thoughts on web development, SaaS, and
+          technology.
         </p>
       </div>
 
@@ -58,7 +61,9 @@ export default function Blog() {
               key={tag.id}
               href={`/blog/tag/${tag.id}`}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
-              style={{ backgroundColor: tag.color ? `${tag.color}15` : undefined }}
+              style={{
+                backgroundColor: tag.color ? `${tag.color}15` : undefined,
+              }}
             >
               {tag.name}
             </Link>
@@ -93,7 +98,10 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
           {post.readTime && <span>• {post.readTime} min read</span>}
         </div>
         <h3 className="text-xl font-semibold mb-3">
-          <Link href={`/blog/${post.slug}`} className="hover:text-blue-600 transition-colors">
+          <Link
+            href={`/blog/${post.slug}`}
+            className="hover:text-blue-600 transition-colors"
+          >
             {post.title}
           </Link>
         </h3>
@@ -140,7 +148,10 @@ function BlogPostCard({ post }: { post: BlogPost }) {
         {post.readTime && <span>• {post.readTime} min read</span>}
       </div>
       <h3 className="text-xl font-semibold mb-2">
-        <Link href={`/blog/${post.slug}`} className="hover:text-blue-600 transition-colors">
+        <Link
+          href={`/blog/${post.slug}`}
+          className="hover:text-blue-600 transition-colors"
+        >
           {post.title}
         </Link>
       </h3>

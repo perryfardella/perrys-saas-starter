@@ -2,6 +2,7 @@ import { getPostBySlug, blogPosts, BlogPost } from "../blog-data";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { ReadingProgress } from "@/app/blog/[slug]/reading-progress";
+import { ArticleLayout } from "@/app/blog/[slug]/article-layout";
 
 // Static imports for MDX files
 import TestMDX from "../posts/test.mdx";
@@ -83,7 +84,9 @@ export default async function ArticlePage({ params }: Props) {
   return (
     <>
       <ReadingProgress />
-      {MDXContent ? <MDXContent /> : <PostFallback post={post} />}
+      <ArticleLayout post={post}>
+        {MDXContent ? <MDXContent /> : <PostFallback post={post} />}
+      </ArticleLayout>
     </>
   );
 }

@@ -26,7 +26,7 @@ export function ArticleLayout({ post, children }: ArticleLayoutProps) {
       {/* Article Header */}
       <header className="mb-8">
         <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-
+        
         {/* Article Meta */}
         <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-6">
           <div className="flex items-center gap-2">
@@ -47,7 +47,7 @@ export function ArticleLayout({ post, children }: ArticleLayoutProps) {
               </Link>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-1">
             <Calendar className="w-4 h-4" />
             <time dateTime={post.date}>
@@ -58,7 +58,7 @@ export function ArticleLayout({ post, children }: ArticleLayoutProps) {
               })}
             </time>
           </div>
-
+          
           {post.readTime && (
             <div className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
@@ -89,7 +89,7 @@ export function ArticleLayout({ post, children }: ArticleLayoutProps) {
       </header>
 
       {/* Article Content */}
-      <div className="prose prose-lg max-w-none prose-headings:font-semibold prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-code:text-pink-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+      <div className="max-w-none">
         {children}
       </div>
 
@@ -111,7 +111,7 @@ export function ArticleLayout({ post, children }: ArticleLayoutProps) {
               )}
             </div>
           </div>
-
+          
           <div className="flex gap-2">
             <Link
               href="/blog"
