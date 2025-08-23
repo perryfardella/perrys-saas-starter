@@ -1,0 +1,605 @@
+# Environment Variables
+
+Learn how to manage environment variables securely across development, staging, and production environments.
+
+## Overview
+
+Environment variables are key-value pairs that store configuration data outside your codebase. They're essential for:
+
+- **Security**: Keeping sensitive information like API keys out of your code
+- **Flexibility**: Different configurations for different environments
+- **Portability**: Easy deployment across different platforms
+- **Team collaboration**: Shared configuration without exposing secrets
+
+## Variable Types
+
+### Public Variables
+
+Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser:
+
+```bash
+# Safe to expose to client-side code
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anonymous_key
+NEXT_PUBLIC_APP_URL=https://yourapp.com
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+```
+
+### Private Variables
+
+Server-side only variables (no `NEXT_PUBLIC_` prefix):
+
+```bash
+# Server-side only - never exposed to browser
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXTAUTH_SECRET=your_auth_secret
+STRIPE_SECRET_KEY=sk_live_...
+DATABASE_URL=postgresql://...
+EMAIL_SERVER_PASSWORD=your_email_password
+```
+
+## Core Configuration
+
+### Authentication
+
+```bash
+# NextAuth configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_super_secret_key
+
+# Generate secret with:
+# openssl rand -base64 32
+```
+
+### Supabase
+
+```bash
+# Project URL (public)
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
+
+# Anonymous key (public - safe for client)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Service role key (private - server only)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### OAuth Providers
+
+```bash
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Discord OAuth
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+```
+
+## Service Integrations
+
+### Payment Processing
+
+```bash
+# Stripe configuration
+STRIPE_SECRET_KEY=sk_test_51...  # Use sk_live_ for production
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51...  # Use pk_live_ for production
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+### Email Services
+
+```bash
+# Resend
+RESEND_API_KEY=re_...
+
+# SendGrid
+SENDGRID_API_KEY=SG...
+
+# Nodemailer SMTP
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=your_email@gmail.com
+EMAIL_SERVER_PASSWORD=your_app_password
+EMAIL_FROM=noreply@yourapp.com
+```
+
+### File Storage
+
+```bash
+# AWS S3
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=your-bucket-name
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+### Analytics & Monitoring
+
+```bash
+# Google Analytics
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# PostHog
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+
+# Sentry
+SENTRY_DSN=https://...@sentry.io/...
+NEXT_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
+```
+
+## Environment Files
+
+### Development (.env.local)
+
+```bash
+# .env.local - for local development only
+# This file should be in .gitignore
+
+# Core configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_local_secret
+
+# Supabase (development project)
+NEXT_PUBLIC_SUPABASE_URL=https://dev-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_dev_service_key
+
+# OAuth (development apps)
+GOOGLE_CLIENT_ID=your_dev_google_id
+GOOGLE_CLIENT_SECRET=your_dev_google_secret
+
+# Stripe (test mode)
+STRIPE_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+### Example File (.env.example)
+
+```bash
+# .env.example - committed to repo as template
+# Copy this to .env.local and fill in actual values
+
+# Core configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=generate_with_openssl_rand_base64_32
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# OAuth Providers
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_or_sk_live
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_or_pk_live
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Email
+RESEND_API_KEY=re_your_resend_key
+```
+
+## Environment-Specific Configuration
+
+### Development
+
+```bash
+# Development environment
+NODE_ENV=development
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Use development/test services
+STRIPE_SECRET_KEY=sk_test_...
+RESEND_API_KEY=re_test_...
+```
+
+### Staging
+
+```bash
+# Staging environment
+NODE_ENV=production
+NEXTAUTH_URL=https://your-app-staging.vercel.app
+NEXT_PUBLIC_APP_URL=https://your-app-staging.vercel.app
+
+# Use test services but with production-like setup
+STRIPE_SECRET_KEY=sk_test_...
+SUPABASE_SERVICE_ROLE_KEY=your_staging_service_key
+```
+
+### Production
+
+```bash
+# Production environment
+NODE_ENV=production
+NEXTAUTH_URL=https://yourdomain.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+
+# Use live services
+STRIPE_SECRET_KEY=sk_live_...
+SUPABASE_SERVICE_ROLE_KEY=your_production_service_key
+```
+
+## Loading Environment Variables
+
+### In Next.js Components
+
+```typescript
+// Client-side (only NEXT_PUBLIC_ variables)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+// Server-side (API routes, server components)
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+```
+
+### With Validation
+
+```typescript
+// lib/env.ts
+import { z } from "zod";
+
+const envSchema = z.object({
+  // Public variables
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+
+  // Private variables
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NEXTAUTH_SECRET: z.string().min(1),
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
+});
+
+export const env = envSchema.parse(process.env);
+
+// Usage
+import { env } from "@/lib/env";
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+```
+
+### Custom Environment Loader
+
+```typescript
+// lib/config.ts
+interface Config {
+  app: {
+    url: string;
+    name: string;
+    environment: "development" | "staging" | "production";
+  };
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceRoleKey: string;
+  };
+  stripe: {
+    secretKey: string;
+    publishableKey: string;
+    webhookSecret: string;
+  };
+}
+
+function loadConfig(): Config {
+  const requiredEnvVars = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ];
+
+  for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+      throw new Error(`Missing required environment variable: ${envVar}`);
+    }
+  }
+
+  return {
+    app: {
+      url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      name: process.env.NEXT_PUBLIC_APP_NAME || "SaaS Starter",
+      environment: (process.env.NODE_ENV as any) || "development",
+    },
+    supabase: {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    },
+    stripe: {
+      secretKey: process.env.STRIPE_SECRET_KEY!,
+      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+    },
+  };
+}
+
+export const config = loadConfig();
+```
+
+## Platform-Specific Setup
+
+### Vercel
+
+Set environment variables in the Vercel dashboard:
+
+1. Go to Project Settings → Environment Variables
+2. Add variables for each environment:
+   - **Development**: Used in Vercel dev environment
+   - **Preview**: Used for branch deployments
+   - **Production**: Used for production deployments
+
+```bash
+# Using Vercel CLI
+vercel env add STRIPE_SECRET_KEY production
+vercel env add STRIPE_SECRET_KEY preview
+vercel env add STRIPE_SECRET_KEY development
+```
+
+### Local Development
+
+```bash
+# Install dependencies for environment management
+npm install dotenv cross-env
+
+# Create environment files
+cp .env.example .env.local
+
+# Load different environment files
+cross-env NODE_ENV=test npm run test
+```
+
+### Docker
+
+```dockerfile
+# Dockerfile
+FROM node:18-alpine
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Copy environment files
+COPY .env.production .env
+
+# ... rest of Dockerfile
+```
+
+```yaml
+# docker-compose.yml
+version: "3.8"
+services:
+  app:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://yourdomain.com
+    env_file:
+      - .env.production
+```
+
+## Security Best Practices
+
+### 1. Never Commit Secrets
+
+```bash
+# .gitignore
+.env.local
+.env.development
+.env.staging
+.env.production
+.env*.local
+```
+
+### 2. Use Strong Secrets
+
+```bash
+# Generate secure random strings
+openssl rand -base64 32
+
+# For JWT secrets
+openssl rand -hex 64
+
+# For database passwords
+openssl rand -base64 48 | tr -d "=+/" | cut -c1-32
+```
+
+### 3. Rotate Keys Regularly
+
+```bash
+# Schedule regular key rotation
+# Update OAuth credentials quarterly
+# Rotate API keys when team members leave
+# Monitor for exposed keys in repositories
+```
+
+### 4. Validate Environment Variables
+
+```typescript
+// lib/env-validation.ts
+export function validateEnvironment() {
+  const required = [
+    "NEXTAUTH_SECRET",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ];
+
+  const missing = required.filter((key) => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+  }
+}
+
+// Call during app initialization
+validateEnvironment();
+```
+
+### 5. Use Environment-Specific Keys
+
+```bash
+# Use different keys for each environment
+# Development
+STRIPE_SECRET_KEY=sk_test_...
+
+# Production
+STRIPE_SECRET_KEY=sk_live_...
+```
+
+## Debugging Environment Issues
+
+### Check Variable Loading
+
+```typescript
+// pages/api/debug-env.ts (development only)
+export default function handler(req, res) {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  res.json({
+    nodeEnv: process.env.NODE_ENV,
+    nextAuthUrl: process.env.NEXTAUTH_URL,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    hasAuthSecret: !!process.env.NEXTAUTH_SECRET,
+  });
+}
+```
+
+### Environment Variable Priority
+
+Next.js loads environment variables in this order (later sources override earlier ones):
+
+1. `process.env`
+2. `.env.local`
+3. `.env.development` / `.env.production` / `.env.test`
+4. `.env`
+
+### Common Issues
+
+```bash
+# Issue: Variable not loading
+# Solution: Check file name and location
+# Files must be in project root
+# Check for typos in variable names
+
+# Issue: Public variables not available in browser
+# Solution: Ensure NEXT_PUBLIC_ prefix
+# Restart development server after adding new variables
+
+# Issue: Variables not updating
+# Solution: Restart development server
+# Clear browser cache
+# Check environment variable priority
+```
+
+## Environment Management Tools
+
+### Development Tools
+
+```bash
+# direnv - automatically load environment
+echo "source_env .env.local" > .envrc
+direnv allow
+
+# dotenv-cli - run commands with environment
+npx dotenv-cli -e .env.staging -- npm run build
+```
+
+### Production Tools
+
+```bash
+# HashiCorp Vault
+# AWS Secrets Manager
+# Azure Key Vault
+# Google Secret Manager
+```
+
+## Testing with Environment Variables
+
+```typescript
+// jest.config.js
+module.exports = {
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "node",
+  // Load test environment variables
+  setupFiles: ["<rootDir>/jest.env.js"],
+};
+
+// jest.env.js
+process.env.NEXTAUTH_SECRET = "test-secret";
+process.env.NEXT_PUBLIC_SUPABASE_URL = "http://localhost:54321";
+```
+
+## Documentation & Team Setup
+
+### Environment Documentation
+
+```markdown
+# Environment Setup Guide
+
+## Required Variables
+
+### Core Application
+
+- `NEXTAUTH_URL`: The base URL of your application
+- `NEXTAUTH_SECRET`: Secret for signing JWTs (generate with `openssl rand -base64 32`)
+
+### Supabase
+
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server-side only)
+
+### OAuth (Optional)
+
+- `GOOGLE_CLIENT_ID`: Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+
+## Setup Instructions
+
+1. Copy `.env.example` to `.env.local`
+2. Fill in all required values
+3. Get Supabase credentials from [dashboard](https://supabase.com/dashboard)
+4. Set up OAuth apps in respective provider dashboards
+```
+
+### Team Onboarding
+
+```bash
+# scripts/setup-env.sh
+#!/bin/bash
+
+echo "Setting up environment variables..."
+
+if [ ! -f .env.local ]; then
+  echo "Copying .env.example to .env.local..."
+  cp .env.example .env.local
+  echo "Please edit .env.local with your actual values"
+else
+  echo ".env.local already exists"
+fi
+
+echo "Generate NEXTAUTH_SECRET with: openssl rand -base64 32"
+echo "Get Supabase credentials from: https://supabase.com/dashboard"
+```
+
+## Next Steps
+
+- [Deploy to Vercel](/docs/vercel-deployment) with environment configuration
+- [Set up monitoring](/docs/monitoring) for environment-related issues
+- [Configure authentication](/docs/auth-overview) with your environment variables

@@ -1,0 +1,505 @@
+# Row Level Security Policies
+
+Master Row Level Security (RLS) to secure your data and control access at the database level.
+
+## What is Row Level Security?
+
+RLS allows you to control which rows users can see and modify based on the current user context. It's like adding a WHERE clause to every query automatically.
+
+## Benefits of RLS
+
+- **Security by default**: Data access is controlled at the database level
+- **Zero-trust architecture**: Even compromised application code can't bypass security
+- **Simplified application logic**: No need to filter data in your application
+- **Multi-tenant ready**: Perfect for SaaS applications with multiple customers
+
+## Basic RLS Setup
+
+### Enable RLS
+
+```sql
+-- Enable RLS on a table
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Disable RLS (not recommended)
+ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
+```
+
+### Default Behavior
+
+When RLS is enabled without policies:
+
+- **SELECT**: Returns no rows
+- **INSERT/UPDATE/DELETE**: Not allowed
+
+You must create policies to allow access.
+
+## Policy Types
+
+### SELECT Policies
+
+Control which rows users can read:
+
+```sql
+-- Users can view their own profile
+CREATE POLICY "Users can view own profile" ON user_profiles
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Everyone can view published posts
+CREATE POLICY "Anyone can view published posts" ON posts
+  FOR SELECT USING (published = true);
+```
+
+### INSERT Policies
+
+Control what users can create:
+
+```sql
+-- Users can only create their own profile
+CREATE POLICY "Users can create own profile" ON user_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Users can create posts
+CREATE POLICY "Authenticated users can create posts" ON posts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+```
+
+### UPDATE Policies
+
+Control what users can modify:
+
+```sql
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile" ON user_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Users can edit their own posts
+CREATE POLICY "Users can edit own posts" ON posts
+  FOR UPDATE USING (auth.uid() = user_id);
+```
+
+### DELETE Policies
+
+Control what users can delete:
+
+```sql
+-- Users can delete their own posts
+CREATE POLICY "Users can delete own posts" ON posts
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Admins can delete any post
+CREATE POLICY "Admins can delete any post" ON posts
+  FOR DELETE USING (
+    auth.jwt() ->> 'role' = 'admin'
+  );
+```
+
+### ALL Policies
+
+Cover multiple operations in one policy:
+
+```sql
+-- Users have full control over their own data
+CREATE POLICY "Users manage own data" ON user_profiles
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+## Common Policy Patterns
+
+### User-Owned Data
+
+```sql
+-- Basic user ownership
+CREATE POLICY "user_owned" ON table_name
+  FOR ALL USING (auth.uid() = user_id);
+
+-- With null handling
+CREATE POLICY "user_owned_safe" ON table_name
+  FOR ALL USING (
+    auth.uid() IS NOT NULL AND auth.uid() = user_id
+  );
+```
+
+### Public/Private Content
+
+```sql
+-- Public content visible to all, private only to owner
+CREATE POLICY "public_or_owned_content" ON posts
+  FOR SELECT USING (
+    published = true OR auth.uid() = user_id
+  );
+```
+
+### Organization-Based Access
+
+```sql
+-- Users can access data from their organizations
+CREATE POLICY "organization_access" ON projects
+  FOR SELECT USING (
+    organization_id IN (
+      SELECT organization_id
+      FROM organization_members
+      WHERE user_id = auth.uid()
+    )
+  );
+```
+
+### Role-Based Access
+
+```sql
+-- Different access levels based on role
+CREATE POLICY "role_based_access" ON sensitive_data
+  FOR SELECT USING (
+    CASE
+      WHEN auth.jwt() ->> 'role' = 'admin' THEN true
+      WHEN auth.jwt() ->> 'role' = 'manager' THEN department_id = auth.jwt() ->> 'department'
+      WHEN auth.jwt() ->> 'role' = 'user' THEN user_id = auth.uid()
+      ELSE false
+    END
+  );
+```
+
+### Time-Based Access
+
+```sql
+-- Content only visible during certain periods
+CREATE POLICY "time_based_access" ON events
+  FOR SELECT USING (
+    starts_at <= now() AND ends_at >= now()
+  );
+```
+
+## Advanced RLS Techniques
+
+### Using Custom Functions
+
+```sql
+-- Create a helper function
+CREATE OR REPLACE FUNCTION user_has_permission(permission_name text)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_permissions up
+    JOIN permissions p ON up.permission_id = p.id
+    WHERE up.user_id = auth.uid()
+    AND p.name = permission_name
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Use in policy
+CREATE POLICY "permission_based_access" ON admin_data
+  FOR SELECT USING (user_has_permission('admin_read'));
+```
+
+### Dynamic Policies with JWT Claims
+
+```sql
+-- Access custom JWT claims
+CREATE POLICY "department_access" ON department_data
+  FOR SELECT USING (
+    department_id = (auth.jwt() ->> 'department_id')::uuid
+  );
+
+-- Multiple roles
+CREATE POLICY "multi_role_access" ON content
+  FOR SELECT USING (
+    auth.jwt() ->> 'role' = ANY(ARRAY['admin', 'moderator', 'editor'])
+  );
+```
+
+### Hierarchical Access
+
+```sql
+-- Users can access data from their team and sub-teams
+CREATE POLICY "hierarchical_team_access" ON team_data
+  FOR SELECT USING (
+    team_id IN (
+      WITH RECURSIVE team_hierarchy AS (
+        -- Base case: user's direct teams
+        SELECT team_id FROM team_members WHERE user_id = auth.uid()
+
+        UNION ALL
+
+        -- Recursive case: sub-teams
+        SELECT t.id
+        FROM teams t
+        JOIN team_hierarchy th ON t.parent_team_id = th.team_id
+      )
+      SELECT team_id FROM team_hierarchy
+    )
+  );
+```
+
+## Security Functions
+
+### Built-in Functions
+
+```sql
+-- Current user ID
+auth.uid()
+
+-- JWT payload
+auth.jwt()
+
+-- Current role (if set in JWT)
+auth.role()
+
+-- Check if user is authenticated
+auth.uid() IS NOT NULL
+```
+
+### Custom Security Functions
+
+```sql
+-- Check if user is admin
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN auth.jwt() ->> 'role' = 'admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check organization membership
+CREATE OR REPLACE FUNCTION is_org_member(org_uuid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM organization_members
+    WHERE organization_id = org_uuid
+    AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check specific permission
+CREATE OR REPLACE FUNCTION has_permission(perm text)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN role_permissions rp ON ur.role_id = rp.role_id
+    JOIN permissions p ON rp.permission_id = p.id
+    WHERE ur.user_id = auth.uid()
+    AND p.name = perm
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+## Multi-Tenant Architecture
+
+### Tenant Isolation
+
+```sql
+-- Complete tenant isolation
+CREATE POLICY "tenant_isolation" ON customer_data
+  FOR ALL USING (
+    tenant_id = (auth.jwt() ->> 'tenant_id')::uuid
+  );
+```
+
+### Shared Resources
+
+```sql
+-- Some resources shared across tenants
+CREATE POLICY "shared_or_tenant_specific" ON resources
+  FOR SELECT USING (
+    is_shared = true OR
+    tenant_id = (auth.jwt() ->> 'tenant_id')::uuid
+  );
+```
+
+### Cross-Tenant Access
+
+```sql
+-- Allow access across tenants for specific roles
+CREATE POLICY "cross_tenant_admin" ON all_tenant_data
+  FOR SELECT USING (
+    -- Same tenant access
+    tenant_id = (auth.jwt() ->> 'tenant_id')::uuid OR
+    -- Super admin access
+    auth.jwt() ->> 'role' = 'super_admin'
+  );
+```
+
+## Performance Considerations
+
+### Efficient Policies
+
+```sql
+-- Good: Uses index on user_id
+CREATE POLICY "efficient_user_policy" ON posts
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Bad: Subquery on every row
+CREATE POLICY "inefficient_policy" ON posts
+  FOR SELECT USING (
+    user_id IN (SELECT user_id FROM team_members WHERE team_id = 'some-uuid')
+  );
+```
+
+### Index Your Policy Columns
+
+```sql
+-- Create indexes for RLS columns
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+CREATE INDEX idx_posts_published ON posts(published);
+CREATE INDEX idx_organization_members_user_id ON organization_members(user_id);
+CREATE INDEX idx_organization_members_org_id ON organization_members(organization_id);
+```
+
+### Use SECURITY DEFINER Functions
+
+```sql
+-- Mark security functions as SECURITY DEFINER
+CREATE OR REPLACE FUNCTION check_team_access(team_uuid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM team_members
+    WHERE team_id = team_uuid
+    AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+## Testing RLS Policies
+
+### Manual Testing
+
+```sql
+-- Test as specific user
+SELECT auth.uid(); -- Should return user ID
+
+-- Test policy behavior
+SELECT * FROM posts; -- Should only return allowed rows
+
+-- Test with different roles
+SELECT auth.jwt() ->> 'role'; -- Check current role
+```
+
+### Test Different Scenarios
+
+```sql
+-- Test as anonymous user
+SELECT auth.uid(); -- Should return NULL
+
+-- Test as different user
+-- (Need to switch session or use different connection)
+```
+
+### Automated Testing
+
+```sql
+-- Create test function
+CREATE OR REPLACE FUNCTION test_rls_policy()
+RETURNS boolean AS $$
+DECLARE
+  test_result boolean;
+BEGIN
+  -- Set test user context
+  PERFORM set_config('request.jwt.claims', '{"sub":"test-user-id"}', true);
+
+  -- Test policy
+  SELECT EXISTS (
+    SELECT 1 FROM posts WHERE user_id = 'test-user-id'
+  ) INTO test_result;
+
+  RETURN test_result;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## Common Pitfalls
+
+### 1. Forgetting to Enable RLS
+
+```sql
+-- Always enable RLS on new tables
+ALTER TABLE new_table ENABLE ROW LEVEL SECURITY;
+```
+
+### 2. Overly Permissive Policies
+
+```sql
+-- Bad: Too permissive
+CREATE POLICY "bad_policy" ON sensitive_data
+  FOR SELECT USING (true);
+
+-- Good: Specific access control
+CREATE POLICY "good_policy" ON sensitive_data
+  FOR SELECT USING (auth.uid() = user_id);
+```
+
+### 3. Not Handling NULL Values
+
+```sql
+-- Bad: Doesn't handle NULL auth.uid()
+CREATE POLICY "null_unsafe" ON posts
+  FOR SELECT USING (user_id = auth.uid());
+
+-- Good: Handles NULL cases
+CREATE POLICY "null_safe" ON posts
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND user_id = auth.uid()
+  );
+```
+
+### 4. Performance Issues
+
+```sql
+-- Bad: Expensive subquery
+CREATE POLICY "expensive" ON posts
+  FOR SELECT USING (
+    user_id IN (
+      SELECT DISTINCT user_id FROM expensive_view
+    )
+  );
+
+-- Good: Use indexed columns
+CREATE POLICY "efficient" ON posts
+  FOR SELECT USING (auth.uid() = user_id);
+```
+
+## Debugging RLS
+
+### Check Policy Application
+
+```sql
+-- View current policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
+WHERE tablename = 'your_table';
+
+-- Check if RLS is enabled
+SELECT schemaname, tablename, rowsecurity
+FROM pg_tables
+WHERE tablename = 'your_table';
+```
+
+### Test Policy Logic
+
+```sql
+-- Test the policy condition directly
+SELECT
+  *,
+  (auth.uid() = user_id) as policy_result
+FROM posts
+LIMIT 5;
+```
+
+### Use EXPLAIN
+
+```sql
+-- See how policies affect query plans
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM posts WHERE published = true;
+```
+
+## Next Steps
+
+- [Learn about database functions](/docs/database-functions) for complex RLS logic
+- [Explore API development](/docs/api-overview) with RLS-protected endpoints
+- [Set up monitoring](/docs/monitoring) for RLS performance

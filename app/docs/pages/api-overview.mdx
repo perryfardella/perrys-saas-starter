@@ -1,0 +1,780 @@
+# API Overview
+
+Learn how to build and consume APIs in your SaaS application using Next.js App Router and Supabase.
+
+## API Architecture
+
+Your SaaS starter includes multiple API layers:
+
+- **Next.js API Routes**: Server-side endpoints for custom logic
+- **Supabase Auto-Generated APIs**: Database REST and GraphQL APIs
+- **Supabase Edge Functions**: Serverless functions for complex operations
+- **Real-time APIs**: WebSocket connections for live updates
+
+## Next.js API Routes
+
+### Creating API Routes
+
+API routes live in the `app/api/` directory:
+
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+
+export async function GET(request: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies });
+
+  // Check authentication
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Fetch data
+  const { data: users, error } = await supabase
+    .from("user_profiles")
+    .select("*");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ users });
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies });
+  const body = await request.json();
+
+  // Validate input
+  if (!body.name || !body.email) {
+    return NextResponse.json(
+      { error: "Name and email are required" },
+      { status: 400 }
+    );
+  }
+
+  // Create user
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .insert(body)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ user: data }, { status: 201 });
+}
+```
+
+### Dynamic Routes
+
+```typescript
+// app/api/users/[id]/route.ts
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  const { id } = params;
+  const supabase = createRouteHandlerClient({ cookies });
+
+  const { data: user, error } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ user });
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const { id } = params;
+  const body = await request.json();
+  const supabase = createRouteHandlerClient({ cookies });
+
+  const { data: user, error } = await supabase
+    .from("user_profiles")
+    .update(body)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ user });
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const { id } = params;
+  const supabase = createRouteHandlerClient({ cookies });
+
+  const { error } = await supabase.from("user_profiles").delete().eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "User deleted successfully" });
+}
+```
+
+## Authentication in APIs
+
+### Protected Routes
+
+```typescript
+// lib/auth-helpers.ts
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
+export async function requireAuth() {
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return { session, supabase };
+}
+
+// Usage in API route
+export async function GET() {
+  const authResult = await requireAuth();
+  if ("status" in authResult) return authResult; // Error response
+
+  const { session, supabase } = authResult;
+
+  // Your protected logic here
+  return NextResponse.json({ user: session.user });
+}
+```
+
+### Role-Based Access
+
+```typescript
+// lib/auth-helpers.ts
+export async function requireRole(requiredRole: string) {
+  const authResult = await requireAuth();
+  if ("status" in authResult) return authResult;
+
+  const { session, supabase } = authResult;
+  const userRole = session.user.user_metadata?.role;
+
+  if (userRole !== requiredRole) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return { session, supabase };
+}
+
+// Usage
+export async function DELETE() {
+  const authResult = await requireRole("admin");
+  if ("status" in authResult) return authResult;
+
+  // Admin-only logic here
+}
+```
+
+## Supabase Auto-Generated APIs
+
+### REST API
+
+Supabase automatically generates REST endpoints:
+
+```typescript
+// Client-side usage
+const supabase = createClientComponentClient();
+
+// GET /rest/v1/posts
+const { data: posts } = await supabase.from("posts").select("*");
+
+// POST /rest/v1/posts
+const { data: newPost } = await supabase
+  .from("posts")
+  .insert({ title: "New Post", content: "Content..." });
+
+// PATCH /rest/v1/posts?id=eq.123
+const { data: updatedPost } = await supabase
+  .from("posts")
+  .update({ title: "Updated Title" })
+  .eq("id", "123");
+
+// DELETE /rest/v1/posts?id=eq.123
+await supabase.from("posts").delete().eq("id", "123");
+```
+
+### Advanced Queries
+
+```typescript
+// Complex filtering
+const { data } = await supabase
+  .from("posts")
+  .select("*")
+  .eq("published", true)
+  .gte("created_at", "2024-01-01")
+  .ilike("title", "%tutorial%")
+  .order("created_at", { ascending: false })
+  .range(0, 9); // Pagination
+
+// Joins and relationships
+const { data } = await supabase.from("posts").select(`
+    *,
+    user_profiles (
+      username,
+      full_name,
+      avatar_url
+    ),
+    categories (
+      name,
+      slug
+    )
+  `);
+
+// Aggregations
+const { data } = await supabase
+  .from("posts")
+  .select("user_id, count(*)")
+  .group("user_id");
+```
+
+## Request/Response Patterns
+
+### Standard Response Format
+
+```typescript
+// lib/api-response.ts
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export function successResponse<T>(data: T, message?: string): Response {
+  return NextResponse.json({
+    success: true,
+    data,
+    message,
+  });
+}
+
+export function errorResponse(error: string, status: number = 400): Response {
+  return NextResponse.json(
+    {
+      success: false,
+      error,
+    },
+    { status }
+  );
+}
+
+// Usage
+export async function GET() {
+  try {
+    const data = await fetchSomeData();
+    return successResponse(data, "Data retrieved successfully");
+  } catch (error) {
+    return errorResponse("Failed to fetch data", 500);
+  }
+}
+```
+
+### Input Validation
+
+```typescript
+// lib/validation.ts
+import { z } from "zod";
+
+export const createPostSchema = z.object({
+  title: z.string().min(1).max(255),
+  content: z.string().min(1),
+  published: z.boolean().default(false),
+  category_id: z.string().uuid().optional(),
+});
+
+// In API route
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = createPostSchema.parse(body);
+
+    // Process validated data
+    const { data } = await supabase.from("posts").insert(validatedData);
+
+    return successResponse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return errorResponse(
+        `Validation error: ${error.errors.map((e) => e.message).join(", ")}`,
+        400
+      );
+    }
+    return errorResponse("Internal server error", 500);
+  }
+}
+```
+
+## Error Handling
+
+### Global Error Handler
+
+```typescript
+// lib/error-handler.ts
+export class ApiError extends Error {
+  constructor(
+    public message: string,
+    public statusCode: number = 500,
+    public code?: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export function handleApiError(error: unknown): Response {
+  console.error("API Error:", error);
+
+  if (error instanceof ApiError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        code: error.code,
+      },
+      { status: error.statusCode }
+    );
+  }
+
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Validation failed",
+        details: error.errors,
+      },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Internal server error",
+    },
+    { status: 500 }
+  );
+}
+
+// Usage in API routes
+export async function POST(request: NextRequest) {
+  try {
+    // Your API logic
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+```
+
+## Client-Side API Consumption
+
+### Custom Hooks
+
+```typescript
+// hooks/use-api.ts
+import { useState, useEffect } from "react";
+
+export function useApi<T>(url: string, options?: RequestInit) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setData(result.data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [url]);
+
+  return { data, loading, error };
+}
+
+// Usage
+function UserList() {
+  const { data: users, loading, error } = useApi<User[]>("/api/users");
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <ul>
+      {users?.map((user) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### API Client
+
+```typescript
+// lib/api-client.ts
+class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = "/api") {
+    this.baseUrl = baseUrl;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "API request failed");
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: "GET" });
+  }
+
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async put<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: "DELETE" });
+  }
+}
+
+export const apiClient = new ApiClient();
+
+// Usage
+const users = await apiClient.get<User[]>("/users");
+const newUser = await apiClient.post<User>("/users", {
+  name: "John",
+  email: "john@example.com",
+});
+```
+
+## Real-time APIs
+
+### WebSocket Connections
+
+```typescript
+// hooks/use-realtime.ts
+import { useEffect, useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+
+export function useRealtime<T>(table: string, filter?: string) {
+  const [data, setData] = useState<T[]>([]);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    // Subscribe to changes
+    const channel = supabase
+      .channel(`realtime:${table}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table,
+          filter,
+        },
+        (payload) => {
+          console.log("Realtime update:", payload);
+
+          switch (payload.eventType) {
+            case "INSERT":
+              setData((prev) => [...prev, payload.new as T]);
+              break;
+            case "UPDATE":
+              setData((prev) =>
+                prev.map((item) =>
+                  (item as any).id === payload.new.id
+                    ? (payload.new as T)
+                    : item
+                )
+              );
+              break;
+            case "DELETE":
+              setData((prev) =>
+                prev.filter((item) => (item as any).id !== payload.old.id)
+              );
+              break;
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [table, filter, supabase]);
+
+  return data;
+}
+
+// Usage
+function LivePosts() {
+  const posts = useRealtime<Post>("posts", "published=eq.true");
+
+  return (
+    <div>
+      {posts.map((post) => (
+        <div key={post.id}>{post.title}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+## API Performance
+
+### Caching
+
+```typescript
+// lib/cache.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export function withCache(handler: Function, ttl: number = 300) {
+  return async (request: NextRequest, ...args: any[]) => {
+    const cacheKey = `api:${request.url}`;
+
+    // Check cache (implement with Redis, memory, etc.)
+    const cached = await getFromCache(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
+    // Execute handler
+    const response = await handler(request, ...args);
+    const data = await response.json();
+
+    // Cache result
+    await setCache(cacheKey, data, ttl);
+
+    return NextResponse.json(data);
+  };
+}
+
+// Usage
+export const GET = withCache(async () => {
+  // Expensive operation
+  const data = await fetchExpensiveData();
+  return NextResponse.json({ data });
+}, 600); // Cache for 10 minutes
+```
+
+### Rate Limiting
+
+```typescript
+// lib/rate-limit.ts
+const requests = new Map();
+
+export function rateLimit(
+  identifier: string,
+  limit: number = 100,
+  windowMs: number = 60000
+) {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  // Get existing requests for this identifier
+  const userRequests = requests.get(identifier) || [];
+
+  // Filter out old requests
+  const recentRequests = userRequests.filter(
+    (time: number) => time > windowStart
+  );
+
+  // Check if limit exceeded
+  if (recentRequests.length >= limit) {
+    return false;
+  }
+
+  // Add current request
+  recentRequests.push(now);
+  requests.set(identifier, recentRequests);
+
+  return true;
+}
+
+// Usage in API route
+export async function POST(request: NextRequest) {
+  const ip = request.ip || "unknown";
+
+  if (!rateLimit(ip, 10, 60000)) {
+    // 10 requests per minute
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
+  // Process request
+}
+```
+
+## API Documentation
+
+### OpenAPI/Swagger
+
+```typescript
+// lib/api-docs.ts
+export const apiDocs = {
+  openapi: "3.0.0",
+  info: {
+    title: "SaaS Starter API",
+    version: "1.0.0",
+    description: "API documentation for SaaS starter",
+  },
+  paths: {
+    "/api/users": {
+      get: {
+        summary: "Get all users",
+        responses: {
+          "200": {
+            description: "List of users",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/User" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      User: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          email: { type: "string", format: "email" },
+          created_at: { type: "string", format: "date-time" },
+        },
+      },
+    },
+  },
+};
+```
+
+## Testing APIs
+
+### Unit Tests
+
+```typescript
+// __tests__/api/users.test.ts
+import { GET, POST } from "@/app/api/users/route";
+import { NextRequest } from "next/server";
+
+// Mock Supabase
+jest.mock("@supabase/auth-helpers-nextjs");
+
+describe("/api/users", () => {
+  it("should return users for authenticated request", async () => {
+    const request = new NextRequest("http://localhost/api/users");
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(Array.isArray(data.data)).toBe(true);
+  });
+
+  it("should create new user", async () => {
+    const request = new NextRequest("http://localhost/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Test User",
+        email: "test@example.com",
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data.name).toBe("Test User");
+  });
+});
+```
+
+## Next Steps
+
+- [Learn about Edge Functions](/docs/edge-functions) for serverless API logic
+- [Set up deployment](/docs/vercel-deployment) with API routes
+- [Explore monitoring](/docs/monitoring) for API performance

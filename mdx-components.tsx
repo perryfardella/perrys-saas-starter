@@ -2,23 +2,42 @@ import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import { CodeBlock } from "@/components/ui/code-block";
 
+// Helper function to generate slug from text
+function generateSlug(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-]+/g, "");
+}
+
 const customComponents: MDXComponents = {
   // Override default HTML elements with styled versions
-  h1: ({ children, ...props }) => (
-    <h1 className="text-4xl font-bold mb-6 mt-8" {...props}>
-      {children}
-    </h1>
-  ),
-  h2: ({ children, ...props }) => (
-    <h2 className="text-2xl font-semibold mb-4 mt-6" {...props}>
-      {children}
-    </h2>
-  ),
-  h3: ({ children, ...props }) => (
-    <h3 className="text-xl font-semibold mb-3 mt-5" {...props}>
-      {children}
-    </h3>
-  ),
+  h1: ({ children, ...props }) => {
+    const id = generateSlug(children?.toString() || "");
+    return (
+      <h1 id={id} className="text-4xl font-bold mb-6 mt-8" {...props}>
+        {children}
+      </h1>
+    );
+  },
+  h2: ({ children, ...props }) => {
+    const id = generateSlug(children?.toString() || "");
+    return (
+      <h2 id={id} className="text-2xl font-semibold mb-4 mt-6" {...props}>
+        {children}
+      </h2>
+    );
+  },
+  h3: ({ children, ...props }) => {
+    const id = generateSlug(children?.toString() || "");
+    return (
+      <h3 id={id} className="text-xl font-semibold mb-3 mt-5" {...props}>
+        {children}
+      </h3>
+    );
+  },
   p: ({ children, ...props }) => (
     <p className="mb-4 leading-relaxed text-gray-700" {...props}>
       {children}
