@@ -1,5 +1,6 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
+import { CodeBlock } from "@/components/ui/code-block";
 
 const customComponents: MDXComponents = {
   // Override default HTML elements with styled versions
@@ -32,22 +33,46 @@ const customComponents: MDXComponents = {
       {children}
     </Link>
   ),
-  code: ({ children, ...props }) => (
-    <code
-      className="bg-gray-100 text-pink-600 px-1 py-0.5 rounded text-sm font-mono"
-      {...props}
-    >
-      {children}
-    </code>
-  ),
-  pre: ({ children, ...props }) => (
-    <pre
-      className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto border border-gray-800 mb-4 font-mono text-sm"
-      {...props}
-    >
-      {children}
-    </pre>
-  ),
+  code: ({ children, className, ...props }) => {
+    // If this is a code block (has className with language), use our CodeBlock component
+    if (className?.startsWith("language-")) {
+      return (
+        <CodeBlock className={className} {...props}>
+          {String(children)}
+        </CodeBlock>
+      );
+    }
+    // Otherwise, it's inline code - use simple styling
+    return (
+      <code
+        className="bg-gray-100 text-pink-600 px-1 py-0.5 rounded text-sm font-mono"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children, ...props }) => {
+    // Check if the child is a code element with syntax highlighting
+    if (
+      typeof children === "object" &&
+      children !== null &&
+      "props" in children &&
+      children.props?.className?.startsWith("language-")
+    ) {
+      // Return the code element directly (it will be handled by the code component above)
+      return children;
+    }
+    // Fallback for regular pre blocks without syntax highlighting
+    return (
+      <pre
+        className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto border border-gray-800 mb-4 font-mono text-sm"
+        {...props}
+      >
+        {children}
+      </pre>
+    );
+  },
   ul: ({ children, ...props }) => (
     <ul className="list-disc list-inside mb-4 space-y-1" {...props}>
       {children}
