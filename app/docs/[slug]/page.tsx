@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDocPageBySlug } from "../docs-data";
+import { getAllDocSections, getDocPageBySlug } from "../docs-data";
 import { DocsLayout } from "@/components/docs/docs-layout";
 
 // Import all the MDX files dynamically
@@ -20,13 +20,11 @@ const mdxFiles: Record<string, any> = {
 };
 
 interface PageProps {
-  params: {
-    slug: string;
-  };
+  params: Promise<{ slug: string }>;
 }
 
 export default async function DocPage({ params }: PageProps) {
-  const { slug } = params;
+  const { slug } = await params;
   const page = getDocPageBySlug(slug);
 
   if (!page || !mdxFiles[slug]) {
@@ -45,7 +43,6 @@ export default async function DocPage({ params }: PageProps) {
 
 // Generate static params for all documentation pages
 export function generateStaticParams() {
-  const { getAllDocSections } = require("../docs-data");
   const sections = getAllDocSections();
 
   const slugs: string[] = [];
